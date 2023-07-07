@@ -74,12 +74,20 @@ tflite_model = convert_saved_model(SAVED_MODEL_DIR)
 save_tflite_model(tflite_model, "my_model.tflite")
 ```
 
-The script prints the `Model parameter sizes in bytes` in <span style="color: red;">red</span>. Copy that red list for later storing into the database.
-That list is `TFLiteModel.layers_sizes` for your model.
+The script prints the `Model parameter sizes in bytes` in <span style="color: red;">red</span>. Copy that red list for later specifying the parameter layer sizes in the Android app.
+That list is `layersSizes` for your `FlowerClient`.
 
-The above script generates the `.tflite` file at `../my_model.tflite`. Move that file to `../backend/static/a_more_proper_name.tflite`.
+The above script generates the `.tflite` file at `../my_model.tflite`. Move that file to `../client/app/src/main/assets/model/a_more_proper_name.tflite`.
 
-Go to `../backend` and add the model into your database.
+Load the model into a `FlowerClient` in the Android app like this:
+
+```kotlin
+val buffer = loadMappedAssetFile(this, "a_more_proper_name.tflite")
+// Replace with your "model parameter sizes in bytes."
+val layersSizes = intArrayOf(1800, 24, 9600, 64, 768000, 480, 40320, 336, 3360, 40)
+val sampleSpec = …
+flowerClient = FlowerClient(buffer, layersSizes, sampleSpec) // Attribute of your `Activity`.
+```
 
 For validation, see the `toy_regression_eg/` example.
 

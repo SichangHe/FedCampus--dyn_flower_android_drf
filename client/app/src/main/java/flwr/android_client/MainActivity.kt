@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var loadDataButton: Button
     private lateinit var trainButton: Button
     private lateinit var resultText: TextView
-    private lateinit var device_id: EditText
+    private lateinit var deviceId: EditText
     lateinit var db: Db
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         resultText = findViewById(R.id.grpc_response_text)
         resultText.movementMethod = ScrollingMovementMethod()
-        device_id = findViewById(R.id.device_id_edit_text)
+        deviceId = findViewById(R.id.device_id_edit_text)
         ip = findViewById(R.id.serverIP)
         port = findViewById(R.id.serverPort)
         loadDataButton = findViewById(R.id.load_data)
@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
     suspend fun restoreInput() {
         val input = db.inputDao().get() ?: return
         runOnUiThread {
-            device_id.text.append(input.device_id)
+            deviceId.text.append(input.device_id)
             ip.text.append(input.ip)
             port.text.append(input.port)
         }
@@ -99,7 +99,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun loadData(@Suppress("UNUSED_PARAMETER") view: View) {
-        if (device_id.text.isEmpty() || !(1..10).contains(device_id.text.toString().toInt())) {
+        if (deviceId.text.isEmpty() || !(1..10).contains(deviceId.text.toString().toInt())) {
             Toast.makeText(
                 this,
                 "Please enter a client partition ID between 1 and 10 (inclusive)",
@@ -108,7 +108,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             hideKeyboard()
             setResultText("Loading the local training dataset in memory. It will take several seconds.")
-            device_id.isEnabled = false
+            deviceId.isEnabled = false
             loadDataButton.isEnabled = false
             scope.launch {
                 loadDataInBackground()
@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
                 db.inputDao().upsertAll(
                     Input(
                         1,
-                        device_id.text.toString(),
+                        deviceId.text.toString(),
                         ip.text.toString(),
                         port.text.toString()
                     )
@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
 
     suspend fun loadDataInBackground() {
         val result = runWithStacktraceOr("Failed to load training dataset.") {
-            loadData(this, flowerClient, device_id.text.toString().toInt())
+            loadData(this, flowerClient, deviceId.text.toString().toInt())
             "Training dataset is loaded in memory. Ready to train!"
         }
         runOnUiThread {

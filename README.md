@@ -1,12 +1,40 @@
-# dyn_flower_android_drf
+# Flower Android Client Example with Kotlin and TensorFlow Lite 2022
 
-Dynamic Flower model use on Android by wrapping Flower with Django REST Framework
+## Set up
 
-Please see `backend/README.md` for information on how to set up the backend server, see `client/README.md` to set up the client.
+Download the training and testing data from <https://www.dropbox.com/s/coeixr4kh8ljw6o/cifar10.zip?dl=1> and extract them to `client/app/src/main/assets/data`.
 
-Please see `gen_tflite/README.md` for information on how to create models and convert them to `.tflite` files.
+Download the TFLite model from <https://github.com/FedCampus/dyn_flower_android_drf/files/11858642/cifar10.zip> to `client/app/src/main/assets/model/cifar10.tflite`.
+Alternatively, see `gen_tflite/README.md` for information on how to convert the CIFAR10 models to a `.tflite` file.
 
-Alternatively, this repository can be used as a package to implement custom Flower clients. Please see `client/fedcampus/README.md` for more information.
+Download Python dependencies:
+
+```sh
+python3 -m pip install -r requirements.txt
+```
+
+## Run the demo
+
+Start the Flower server at `./`:
+
+```sh
+python3 server.py
+```
+
+Install the app on *physical* Android devices and launch it.
+
+*Note*: the highest tested JDK version the app supports is 16; it fails to build using JDK 19 on macOS.
+
+In the user interface, fill in:
+
+- Device number: a unique number among 1 ~ 10.
+    This number is used to choose the partition of the training dataset.
+- Server IP: an IPv4 address of the computer your backend server is running on. You can probably find it in your system network settings.
+- Server port: 8080.
+
+Push the first button and load the dataset. This may take a minute.
+
+Push the second button and start the training.
 
 ---
 

@@ -16,7 +16,8 @@
             android:hint="Client Partition ID (1-10)"
             android:inputType="numberDecimal"
             android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-            android:textColor="#4a5663" />
+            android:textColor="#4a5663"
+            android:importantForAutofill="no" />
 
     <EditText
             android:id="@+id/serverIP"
@@ -29,7 +30,8 @@
             android:hint="FL Server IP"
             android:inputType="phone"
             android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-            android:textColor="#4a5663" />
+            android:textColor="#4a5663"
+            android:importantForAutofill="no" />
 
     <EditText
             android:id="@+id/serverPort"
@@ -42,7 +44,8 @@
             android:hint="FL Server Port"
             android:inputType="numberDecimal"
             android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-            android:textColor="#4a5663" />
+            android:textColor="#4a5663"
+            android:importantForAutofill="no" />
 
     <Button
             android:id="@+id/load_data"

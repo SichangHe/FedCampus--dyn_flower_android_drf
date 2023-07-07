@@ -79,10 +79,10 @@ class FlowerServiceRunnable<X : Any, Y : Any>
         callback("Handling Fit request from the server.")
         val layers = message.fitIns.parameters.tensorsList
         assertIntsEqual(layers.size, flowerClient.layersSizes.size)
-        val epoch_config = message.fitIns.configMap.getOrDefault(
+        val epochConfig = message.fitIns.configMap.getOrDefault(
             "local_epochs", Scalar.newBuilder().setSint64(1).build()
         )!!
-        val epochs = epoch_config.sint64.toInt()
+        val epochs = epochConfig.sint64.toInt()
         val newWeights = weightsFromLayers(layers)
         flowerClient.updateParameters(newWeights.toTypedArray())
         flowerClient.fit(
@@ -104,13 +104,10 @@ class FlowerServiceRunnable<X : Any, Y : Any>
         return evaluateResAsProto(loss, sampleSize)
     }
 
-    private fun weightsByteBuffers(): Array<ByteBuffer> {
-        return flowerClient.weights()
-    }
+    private fun weightsByteBuffers() = flowerClient.getParameters()
 
-    private fun weightsFromLayers(layers: List<ByteString>): List<ByteBuffer> {
-        return layers.map { ByteBuffer.wrap(it.toByteArray()) }
-    }
+    private fun weightsFromLayers(layers: List<ByteString>) =
+        layers.map { ByteBuffer.wrap(it.toByteArray()) }
 
     companion object {
         private const val TAG = "Flower Service Runnable"

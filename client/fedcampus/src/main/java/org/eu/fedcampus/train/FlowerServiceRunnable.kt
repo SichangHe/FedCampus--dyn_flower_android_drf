@@ -18,10 +18,15 @@ import java.util.concurrent.CountDownLatch
 
 /**
  * Start communication with Flower server and training in the background.
+ * Note: constructing an instance of this class **immediately** starts training.
+ *
+ * Use [createFlowerService] to create a [FlowerServiceRunnable] instance using Flower server address.
+ * @param flowerServerChannel Channel already connected to Flower server.
+ * @param callback Called with information on training events.
  */
 class FlowerServiceRunnable<X : Any, Y : Any>
 @Throws constructor(
-    channel: ManagedChannel,
+    flowerServerChannel: ManagedChannel,
     val flowerClient: FlowerClient<X, Y>,
     val callback: (String) -> Unit
 ) {
@@ -29,7 +34,7 @@ class FlowerServiceRunnable<X : Any, Y : Any>
         get() = flowerClient.trainingSamples.size
     val finishLatch = CountDownLatch(1)
 
-    val asyncStub = FlowerServiceGrpc.newStub(channel)!!
+    val asyncStub = FlowerServiceGrpc.newStub(flowerServerChannel)!!
     val requestObserver = asyncStub.join(object : StreamObserver<ServerMessage> {
         override fun onNext(msg: ServerMessage) {
             try {
@@ -139,20 +144,27 @@ fun evaluateResAsProto(accuracy: Float, testing_size: Int): ClientMessage {
     return ClientMessage.newBuilder().setEvaluateRes(res).build()
 }
 
+/**
+ * Create a [FlowerServiceRunnable] with address to the Flower server.
+ * @param flowerServerAddress Like "dns:///$host:$port".
+ */
 suspend fun <X : Any, Y : Any> createFlowerService(
-    address: String,
-    secure: Boolean,
-    client: FlowerClient<X, Y>,
+    flowerServerAddress: String,
+    useTLS: Boolean,
+    flowerClient: FlowerClient<X, Y>,
     callback: (String) -> Unit
 ): FlowerServiceRunnable<X, Y> {
-    val channel = createChannel(address, secure)
-    return FlowerServiceRunnable(channel, client, callback)
+    val channel = createChannel(flowerServerAddress, useTLS)
+    return FlowerServiceRunnable(channel, flowerClient, callback)
 }
 
-suspend fun createChannel(address: String, secure: Boolean = false): ManagedChannel {
+/**
+ * @param address Address of the gRPC server, like "dns:///$host:$port".
+ */
+suspend fun createChannel(address: String, useTLS: Boolean = false): ManagedChannel {
     val channelBuilder =
         ManagedChannelBuilder.forTarget(address).maxInboundMessageSize(HUNDRED_MEBIBYTE)
-    if (!secure) {
+    if (!useTLS) {
         channelBuilder.usePlaintext()
     }
     return withContext(Dispatchers.IO) {

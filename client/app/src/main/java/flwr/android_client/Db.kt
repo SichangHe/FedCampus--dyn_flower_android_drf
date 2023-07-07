@@ -1,12 +1,9 @@
 package flwr.android_client
 
 import androidx.room.*
-import org.eu.fedcampus.train.db.Model
-import org.eu.fedcampus.train.db.ModelDao
 
-@Database(entities = [Model::class, Input::class], version = 1, autoMigrations = [])
+@Database(entities = [Input::class], version = 1, autoMigrations = [])
 abstract class Db : RoomDatabase() {
-    abstract fun modelDao(): ModelDao
     abstract fun inputDao(): InputDao
 }
 

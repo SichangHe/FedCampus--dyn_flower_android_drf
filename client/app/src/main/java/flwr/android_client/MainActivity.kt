@@ -1,9 +1,7 @@
 package flwr.android_client
 
-import android.annotation.SuppressLint
 import android.icu.text.SimpleDateFormat
 import android.os.Bundle
-import android.provider.Settings
 import android.text.TextUtils
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
@@ -11,7 +9,6 @@ import android.util.Patterns
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
@@ -20,25 +17,24 @@ import androidx.room.Room
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import org.eu.fedcampus.train.FlowerClient
+import org.eu.fedcampus.train.FlowerServiceRunnable
 import org.eu.fedcampus.train.SampleSpec
-import org.eu.fedcampus.train.Train
+import org.eu.fedcampus.train.createFlowerService
 import org.eu.fedcampus.train.helpers.classifierAccuracy
-import org.eu.fedcampus.train.helpers.loadMappedFile
+import org.eu.fedcampus.train.helpers.loadMappedAssetFile
 import org.eu.fedcampus.train.helpers.negativeLogLikelihoodLoss
 import java.util.*
 
 @Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity() {
     private val scope = MainScope()
-    lateinit var train: Train<Float3DArray, FloatArray>
     lateinit var flowerClient: FlowerClient<Float3DArray, FloatArray>
+    lateinit var flowerServiceRunnable: FlowerServiceRunnable<Float3DArray, FloatArray>
     private lateinit var ip: EditText
     private lateinit var port: EditText
     private lateinit var loadDataButton: Button
-    private lateinit var connectButton: Button
     private lateinit var trainButton: Button
     private lateinit var resultText: TextView
-    private lateinit var freshStartCheckbox: CheckBox
     private lateinit var device_id: EditText
     lateinit var db: Db
 
@@ -52,10 +48,22 @@ class MainActivity : AppCompatActivity() {
         ip = findViewById(R.id.serverIP)
         port = findViewById(R.id.serverPort)
         loadDataButton = findViewById(R.id.load_data)
-        connectButton = findViewById(R.id.connect)
         trainButton = findViewById(R.id.trainFederated)
-        freshStartCheckbox = findViewById(R.id.fresh_start_checkbox)
+        createFlowerClient()
         scope.launch { restoreInput() }
+    }
+
+    private fun createFlowerClient() {
+        val buffer = loadMappedAssetFile(this, "model/cifar10.tflite")
+        val layersSizes = intArrayOf(1800, 24, 9600, 64, 768000, 480, 40320, 336, 3360, 40)
+        val sampleSpec = SampleSpec<Float3DArray, FloatArray>(
+            { it.toTypedArray() },
+            { it.toTypedArray() },
+            { Array(it) { FloatArray(CLASSES.size) } },
+            ::negativeLogLikelihoodLoss,
+            ::classifierAccuracy,
+        )
+        flowerClient = FlowerClient(buffer, layersSizes, sampleSpec)
     }
 
     suspend fun restoreInput() {
@@ -129,7 +137,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun connect(@Suppress("UNUSED_PARAMETER") view: View) {
+    fun runGrpc(@Suppress("UNUSED_PARAMETER") view: View) {
         val host = ip.text.toString()
         val portStr = port.text.toString()
         if (TextUtils.isEmpty(host) || TextUtils.isEmpty(portStr) || !Patterns.IP_ADDRESS.matcher(
@@ -145,61 +153,21 @@ class MainActivity : AppCompatActivity() {
             val port = if (TextUtils.isEmpty(portStr)) 0 else portStr.toInt()
             scope.launch {
                 runWithStacktrace {
-                    connectInBackground(host, port)
+                    runGrpcInBackground(host, port)
                 }
             }
             hideKeyboard()
             ip.isEnabled = false
             this.port.isEnabled = false
-            connectButton.isEnabled = false
-            setResultText("Creating channel object.")
+            trainButton.isEnabled = false
+            setResultText("Started training.")
         }
     }
 
-    fun stringToLong(string: String): Long {
-        val hashCode = string.hashCode().toLong()
-        val secondHashCode = string.reversed().hashCode().toLong()
-        return (hashCode shl 32) or secondHashCode
-    }
-
-    @SuppressLint("HardwareIds")
-    @Throws
-    suspend fun connectInBackground(host: String, port: Int) {
-        val backendUrl = "http://$host:$port"
-        Log.i(TAG, "Backend URL: $backendUrl")
-        val sampleSpec = SampleSpec<Float3DArray, FloatArray>(
-            { it.toTypedArray() },
-            { it.toTypedArray() },
-            { Array(it) { FloatArray(CLASSES.size) } },
-            ::negativeLogLikelihoodLoss,
-            ::classifierAccuracy,
-        )
-        train = Train(this, backendUrl, sampleSpec, db.modelDao())
-        val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-        train.enableTelemetry(stringToLong(deviceId))
-        val modelFile = train.prepareModel(DATA_TYPE)
-        val serverData = train.getServerInfo(freshStartCheckbox.isChecked)
-        freshStartCheckbox.isEnabled = false
-        if (serverData.port == null) {
-            throw Error("Flower server port not available, status ${serverData.status}")
-        }
-        flowerClient =
-            train.prepare(loadMappedFile(modelFile), "dns:///$host:${serverData.port}", false)
-        runOnUiThread {
-            loadDataButton.isEnabled = true
-            setResultText("Prepared for training.")
-        }
-    }
-
-    fun runGrpc(@Suppress("UNUSED_PARAMETER") view: View) {
-        scope.launch {
-            runGrpcInBackground()
-        }
-    }
-
-    suspend fun runGrpcInBackground() {
+    suspend fun runGrpcInBackground(host: String, port: Int) {
+        val address = "dns:///$host:$port"
         val result = runWithStacktraceOr("Failed to connect to the FL server \n") {
-            train.start {
+            flowerServiceRunnable = createFlowerService(address, false, flowerClient) {
                 runOnUiThread {
                     setResultText(it)
                 }
@@ -223,6 +191,5 @@ class MainActivity : AppCompatActivity() {
 }
 
 private const val TAG = "MainActivity"
-private const val DATA_TYPE = "CIFAR10_32x32x3"
 
 typealias Float3DArray = Array<Array<FloatArray>>

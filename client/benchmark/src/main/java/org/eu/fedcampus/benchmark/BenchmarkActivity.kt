@@ -1,6 +1,10 @@
 package org.eu.fedcampus.benchmark
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.os.BatteryManager
 import android.os.Bundle
 import android.util.Log
 import android.util.Patterns
@@ -91,3 +95,13 @@ class BenchmarkActivity : AppCompatActivity() {
 }
 
 fun isUrl(url: String) = URLUtil.isValidUrl(url) && Patterns.WEB_URL.matcher(url).matches()
+
+class PowerConnectionReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent) {
+        val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
+            val newIntent = Intent(context, BenchmarkActivity::class.java)
+            context!!.startActivity(newIntent)
+        }
+    }
+}
